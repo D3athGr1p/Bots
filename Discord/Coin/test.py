@@ -10,8 +10,11 @@ import rpc
 from bitcoinrpc.authproxy import AuthServiceProxy, JSONRPCException
 from decimal import Decimal
 
-load_dotenv()
+# from signal import signal, SIGPIPE, SIG_DFL
 
+# signal(SIGPIPE,SIG_DFL)
+
+load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
 RPCUSER = os.getenv('RPCUSER')
@@ -19,7 +22,14 @@ RPCPASSWORD = os.getenv('RPCPASSWORD')
 RPCPORT = os.getenv('RPCPORT')
 
 
+rpc_connection = AuthServiceProxy(f"http://{RPCUSER}:{RPCPASSWORD}@127.0.0.1:{RPCPORT}")
+
 client = discord.Client(intents=discord.Intents.default())
+
+sad_words = ["sad", "happy", "angry"]
+
+starter_eng = []
+
 
 class DecimalEncoder(json.JSONEncoder):
   def default(self, obj):
@@ -36,29 +46,32 @@ def get_qoute():
 
 @client.event
 async def on_ready():
-    print("Bot is now ready to use!!!")
-    print("--------------------------")
-
+    print('We have logged')
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
+
     msg = message.content
+    # print(repr(message))
 
     if msg.startswith('$qoute'):
         await message.channel.send(get_qoute())
 
     if msg.startswith('$getinfo'):
-        rpc_connection = AuthServiceProxy(f"http://{RPCUSER}:{RPCPASSWORD}@127.0.0.1:{RPCPORT}")
         res = rpc.getinfo(rpc_connection)
         json_object = json.dumps(res, cls=DecimalEncoder, indent = 4)
+        # print(json_object)
         await message.channel.send(json_object)
 
-    if msg.startswith('$help'):
-        help = '''
-        $qoute   :   for getting random qoute \n$getinfo :   for getting magnus blockchain info
-        '''
-        await message.channel.send(help)
+    if any(word in msg for word in sad_words):
+        await message.channel.send(random.choice(starter_eng))
 
-client.run(TOKEN)
+keep_alive()
+
+try:
+    client.run(os.getenv('TOKEN'))
+except IOError as e:
+    if e.errno == e.errno.EPIPE:
+        print("SOCKET ERROR")
